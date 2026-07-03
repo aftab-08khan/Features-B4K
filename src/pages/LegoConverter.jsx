@@ -124,7 +124,7 @@ export default function LegoConverter() {
 
       <canvas ref={canvasRef} className="hidden" />
 
-      <div className="max-w-6xl mx-auto relative z-10 space-y-8">
+      <div className="max-w-7xl mx-auto relative z-10 space-y-8">
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-md border-2 border-slate-200/80 gap-4">
           <div>
