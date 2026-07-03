@@ -45,23 +45,39 @@ export default function ModrenCard() {
   const [activeStyle, setActiveStyle] = useState('classic')
   const [ribbonStyle, setRibbonStyle] = useState('solid') 
   const [submittedData, setSubmittedData] = useState({ ...formData, style: 'classic' })
+  const [isDragging, setIsDragging] = useState(false) // Track user interaction
 
   const cardRef = useRef(null)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
 
+  // Drag position values used to distort the ribbon when pulled
+  const dragX = useMotionValue(0)
+  const dragY = useMotionValue(0)
+
   const springConfig = { stiffness: 160, damping: 22 }
   const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [18, -18]), springConfig)
   const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-18, 12]), springConfig)
 
-  const ribbonX = useSpring(useTransform(x, [-0.5, 0.5], [-12, 12]), { stiffness: 100, damping: 25 })
-  const ribbonSkew = useSpring(useTransform(x, [-0.5, 0.5], [-5, 5]), { stiffness: 100, damping: 25 })
+  // Ribbon physics dynamics linked to mouse hovering OR physical drag offsets
+  const ribbonX = useSpring(
+    useTransform(() => isDragging ? dragX.get() * 0.45 : x.get() * 24),
+    { stiffness: 120, damping: 14 }
+  )
+  const ribbonSkew = useSpring(
+    useTransform(() => isDragging ? dragX.get() * -0.12 : x.get() * -8),
+    { stiffness: 120, damping: 14 }
+  )
+  const ribbonScaleY = useSpring(
+    useTransform(() => isDragging ? 1 + Math.abs(dragY.get()) * 0.0025 : 1),
+    { stiffness: 150, damping: 15 }
+  )
 
   const handleMouseMove = (event) => {
-    if (!cardRef.current) return
+    if (!cardRef.current || isDragging) return
     const rect = cardRef.current.getBoundingClientRect()
-    x.set((event.clientX - rect.left - rect.width / 1) / rect.width)
-    y.set((event.clientY - rect.top - rect.height / 1) / rect.height)
+    x.set((event.clientX - rect.left - rect.width / 2) / rect.width)
+    y.set((event.clientY - rect.top - rect.height / 2) / rect.height)
   }
 
   const qrPayload = JSON.stringify({
@@ -216,17 +232,21 @@ export default function ModrenCard() {
               </button>
             </div>
 
-            <motion.div 
-              className="perspective-1000 pt-28 pb-8 w-full flex flex-col justify-center items-center relative"
-              animate={{ y: [0, -10, 0], rotate: [1, 0.8, 1] }}
-              transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-            >
+            {/* Canvas Outer Boundary Box */}
+            <div className="perspective-1000 pt-28 pb-8 w-full flex flex-col justify-center items-center relative">
               
+              {/* RIBBON COMPONENT */}
               <motion.div 
-                style={{ x: ribbonX, skewX: ribbonSkew, originX: 0.5, originY: 0 }}
-                className="absolute top-0 bottom-1/2 left-1/2 -translate-x-1/2 w-10 flex flex-col items-center pointer-events-none z-0"
+                style={{ 
+                  x: ribbonX, 
+                  skewX: ribbonSkew, 
+                  scaleY: ribbonScaleY,
+                  originX: 0.5, 
+                  originY: 0 
+                }}
+                className="absolute -top-4 bottom-1/2 left-1/2 -translate-x-1/2 w-10 flex flex-col items-center pointer-events-none z-0"
               >
-                <div className={`w-full h-32 bg-gradient-to-b ${currentTheme.lanyard} rounded-t-xs shadow-inner opacity-95 relative overflow-hidden`}>
+                <div className={`w-full h-24 bg-gradient-to-b ${currentTheme.lanyard} rounded-t-xs shadow-inner opacity-95 relative overflow-hidden`}>
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.12)_50%,transparent_50%)] bg-[size:100%_4px]" />
                   
                   {ribbonStyle === 'stripe' && (
@@ -243,12 +263,26 @@ export default function ModrenCard() {
                 <div className="w-3 h-4 bg-slate-700 rounded-b-md shadow-sm -mt-0.5" />
               </motion.div>
 
+              {/* DYNAMIC SWAYING + DRAGGABLE BADGE PLATFORM */}
               <motion.div
+                drag
+                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                dragElastic={0.65}
+                dragTransition={{ bounceStiffness: 240, bounceDamping: 15 }} // Rebound elasticity setup
+                dragValues={{ x: dragX, y: dragY }}
+                onDragStart={() => setIsDragging(true)}
+                onDragEnd={() => {
+                  setIsDragging(false)
+                  x.set(0)
+                  y.set(0)
+                }}
+                animate={isDragging ? {} : { y: [0, -10, 0], rotate: [1, 0.8, 1] }}
+                transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
                 ref={cardRef}
                 onMouseMove={handleMouseMove}
-                onMouseLeave={() => { x.set(0); y.set(0) }}
+                onMouseLeave={() => { if (!isDragging) { x.set(0); y.set(0) } }}
                 style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }}
-                className={`w-[440px] h-[268px] rounded-2xl ${currentTheme.bg} p-6 pt-11 shadow-2xl ${currentTheme.glow} transition-all duration-700 ease-out flex flex-col justify-between border-2 border-white/30 relative overflow-hidden group cursor-grab active:cursor-grabbing select-none z-10`}
+                className={`w-[440px] h-[268px] rounded-2xl ${currentTheme.bg} p-6 pt-11 shadow-2xl ${currentTheme.glow} flex flex-col justify-between border-2 border-white/30 relative overflow-hidden group cursor-grab active:cursor-grabbing select-none z-10`}
               >
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 w-11 h-2 bg-slate-950/50 rounded-full border border-white/15 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.7)] z-30" />
 
@@ -342,7 +376,7 @@ export default function ModrenCard() {
                 )}
 
               </motion.div>
-            </motion.div>
+            </div>
 
           </div>
         </div>
