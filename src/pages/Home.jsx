@@ -25,6 +25,12 @@ const Home = () => {
           >
             LEGO Convertor
           </Link>
+                <Link
+            to="/reports"
+            className="rounded-xl bg-[#0055BF] px-6 py-3.5 text-sm font-extrabold text-white shadow-md transition-all hover:bg-[#003F91] hover:shadow-lg active:scale-95"
+          >
+            Reports
+          </Link>
         </div>
       </div>
     </div>
